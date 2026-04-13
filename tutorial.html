@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gene–Phenotype Analysis Pipeline</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #ffffff;
+    }
+
+    .page {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 60px 40px 100px;
+    }
+
+    /* ── Typography ── */
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 6px;
+      color: #111;
+    }
+
+    .subtitle {
+      font-size: 1.05rem;
+      color: #555;
+      margin-bottom: 48px;
+      font-weight: 400;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      margin-top: 56px;
+      margin-bottom: 4px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e8e8e8;
+      color: #111;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 10px;
+      color: #222;
+    }
+
+    .script-meta {
+      font-size: 0.88rem;
+      color: #666;
+      margin-bottom: 18px;
+      margin-top: -2px;
+    }
+
+    .script-meta strong { color: #444; }
+
+    p { margin-bottom: 16px; }
+
+    a { color: #2563eb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Method figure ── */
+    .method-figure {
+      margin: 32px 0;
+      text-align: center;
+    }
+
+    .method-figure img {
+      max-width: 100%;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+    }
+
+    .method-figure figcaption {
+      font-size: 0.88rem;
+      color: #666;
+      margin-top: 10px;
+    }
+
+    /* ── Code blocks ── */
+    pre {
+      background: #f6f7f8;
+      border: 1px solid #e2e4e7;
+      border-radius: 6px;
+      padding: 20px 22px;
+      overflow-x: auto;
+      margin: 18px 0 24px;
+      font-size: 0.83rem;
+      line-height: 1.6;
+    }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.85em;
+      background: #f0f1f3;
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: #333;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+      color: inherit;
+      border-radius: 0;
+    }
+
+    /* ── Callout / Note boxes ── */
+    .note {
+      background: #f8f9fa;
+      border-left: 3px solid #adb5bd;
+      padding: 12px 16px;
+      margin: 20px 0;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.93rem;
+      color: #444;
+    }
+
+    .note strong { color: #333; }
+
+    /* ── Tables ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0 28px;
+      font-size: 0.9rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 9px 14px;
+      background: #f3f4f5;
+      font-weight: 600;
+      border-bottom: 2px solid #ddd;
+      color: #222;
+    }
+
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #eee;
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    /* ── Data flow pre ── */
+    .flow-block {
+      background: #f6f7f8;
+      border: 1px solid #e2e4e7;
+      border-radius: 6px;
+      padding: 20px 22px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.83rem;
+      line-height: 1.8;
+      overflow-x: auto;
+      margin: 18px 0 24px;
+      white-space: pre;
+    }
+
+    /* ── Section dividers ── */
+    hr {
+      border: none;
+      border-top: 1px solid #eee;
+      margin: 48px 0;
+    }
+
+    /* ── TOC ── */
+    .toc {
+      background: #fafafa;
+      border: 1px solid #e8e8e8;
+      border-radius: 6px;
+      padding: 22px 26px;
+      margin: 36px 0 52px;
+    }
+
+    .toc h3 {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #888;
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+
+    .toc ol {
+      padding-left: 20px;
+      margin: 0;
+    }
+
+    .toc li {
+      margin-bottom: 5px;
+      font-size: 0.93rem;
+    }
+
+    .toc a { color: #333; }
+    .toc a:hover { color: #2563eb; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Gene–Phenotype Analysis Pipeline</h1>
+  <p class="subtitle">Linking Bulk RNA-seq Expression to Quantitative Tissue Measurements</p>
+
+  <!-- ── Table of Contents ── -->
+  <div class="toc">
+    <h3>Contents</h3>
+    <ol>
+      <li><a href="#introduction">Introduction</a></li>
+      <li><a href="#before-you-start">Before You Start</a></li>
+      <li><a href="#script1">Script 1 — Preprocessing</a></li>
+      <li><a href="#script2">Script 2 — Elastic Net</a></li>
+      <li><a href="#script3">Script 3 — Correlation Analysis</a></li>
+      <li><a href="#script4">Script 4 — Correlation Heatmap</a></li>
+      <li><a href="#script5">Script 5 — Scatter Plots</a></li>
+      <li><a href="#data-flow">Data Flow Summary</a></li>
+    </ol>
+  </div>
+
+  <!-- ── Introduction ── -->
+  <h2 id="introduction">Introduction</h2>
+
+  <p>This pipeline is designed for studies where you have <strong>bulk RNA-seq data</strong> from patient tissue samples and a <strong>quantitative phenotypic measurement</strong> from the same patients — think histological staining scores, cell size measurements, or any numeric clinical readout. The goal is to identify which genes best predict that measurement, then validate and visualize those associations across your patient groups.</p>
+
+  <p>The strategy has two stages. First, we use <strong>Elastic Net penalized regression</strong> to select a compact list of candidate genes from what could be tens of thousands of expressed genes. This step is essential because standard regression breaks down when you have far more features than samples, which is almost always the case in transcriptomics. Second, we validate those candidates with <strong>Pearson correlations</strong> run separately within each patient group, apply FDR correction, and produce publication-ready visualizations.</p>
+
+  <figure class="method-figure">
+    <img src="Method_JPG.jpg" alt="Pipeline overview diagram" />
+    <figcaption>Figure 1. Overview of the analysis pipeline.</figcaption>
+  </figure>
+
+  <p>The pipeline runs as five R scripts in sequence. Everything produced in one script feeds directly into the next.</p>
+
+  <hr />
+
+  <!-- ── Before You Start ── -->
+  <h2 id="before-you-start">Before You Start</h2>
+
+  <h3>Required R Packages</h3>
+
+<pre><code># From CRAN
+install.packages(c("tidyverse", "readxl", "glmnet", "ggplot2", "circlize"))
+
+# From Bioconductor
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+BiocManager::install(c("biomaRt", "ComplexHeatmap"))</code></pre>
+
+  <h3>Data You Will Need</h3>
+
+  <table>
+    <thead>
+      <tr><th>File</th><th>Format</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Gene count matrix</td>
+        <td><code>.csv</code></td>
+        <td>Rows = Ensembl gene IDs, columns = sample IDs. Must include a <code>gene_biotype</code> column.</td>
+      </tr>
+      <tr>
+        <td>Sample metadata</td>
+        <td><code>.xlsx</code></td>
+        <td>One row per sample. Must include <code>Sample</code>, <code>Region</code> (<code>"LV"</code> / <code>"RV"</code>), and <code>Etiology</code> (your group labels).</td>
+      </tr>
+      <tr>
+        <td>Phenotypic data</td>
+        <td><code>.xlsx</code></td>
+        <td>One row per patient. Must include <code>Patient ID</code> and one or more numeric outcome columns.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Adapting This Pipeline to Your Study</h3>
+
+  <p>Throughout the tutorial, patient groups are referred to as <strong>Group 1</strong>, <strong>Group 2</strong>, and <strong>Group 3</strong>, with corresponding R variables named <code>group1_list</code>, <code>group2_list</code>, and <code>group3_list</code>. Replace these with whatever group labels make sense for your study.</p>
+
+  <p>Similarly, the outcome variable is written as <code>"your_outcome_column"</code> in all code — replace it with the exact column name from your phenotypic data file (e.g., <code>"Fibrosis_Percent"</code> or <code>"Cell_Area_um2"</code>).</p>
+
+  <hr />
+
+  <!-- ── Script 1 ── -->
+  <h2 id="script1">Script 1 — Preprocessing</h2>
+  <p class="script-meta"><strong>File:</strong> Preprocessing.R &nbsp;|&nbsp; <strong>Libraries:</strong> readxl, tidyverse, dplyr</p>
+
+  <p>This script does all the groundwork. It loads your raw data, applies quality control, and organizes everything into structured per-group lists that every downstream script depends on. Running this first — and making sure it completes without errors — saves a lot of headaches later.</p>
+
+  <h3>Load and Clean the Data</h3>
+
+<pre><code>library(readxl)
+library(tidyverse)
+library(dplyr)
+
+# Load your phenotypic/staining data.
+# If your Etiology column has verbose labels like "Group 1 (subtype A)",
+# use fct_recode() to simplify them into short, consistent labels.
+staining_data &lt;- readxl::read_excel("path/to/staining_data.xlsx") %&gt;%
+  mutate(Etiology = fct_recode(Etiology,
+                               "Group 1" = "Group 1 (subtype A)",
+                               "Group 2" = "Group 2 (subtype B)")) %&gt;%
+  select(-Age, -Sex, -BMI)   # drop any columns not needed downstream
+
+# Load RNA-seq count matrix and sample metadata
+raw_count &lt;- read.csv("path/to/gene_count.csv")
+metadata  &lt;- read_excel("path/to/metadata.xlsx")
+
+# Remove flagged outlier samples if you have any.
+# If not, just remove the filter() line entirely.
+total_metadata &lt;- metadata %&gt;%
+  filter(!Sample %in% c("OUTLIER_SAMPLE_1", "OUTLIER_SAMPLE_2")) %&gt;%
+  column_to_rownames(var = "Sample")
+
+# Keep only protein-coding genes and align to the samples in metadata
+total_count &lt;- raw_count %&gt;%
+  filter(gene_biotype == "protein_coding") %&gt;%
+  column_to_rownames(var = "gene_id") %&gt;%
+  select(all_of(rownames(total_metadata)))
+
+rm(raw_count, metadata)   # clean up memory</code></pre>
+
+  <h3>Split by Tissue Region</h3>
+
+  <p>If your study includes samples from more than one tissue region (e.g., left ventricle and right ventricle), this function carves the full dataset into region-specific subsets.</p>
+
+<pre><code>create_subset &lt;- function(full_counts, full_meta, region_name) {
+  sub_meta  &lt;- full_meta %&gt;% filter(Region == region_name)
+  sub_count &lt;- full_counts %&gt;% select(all_of(rownames(sub_meta)))
+  list(count = sub_count, metadata = sub_meta)
+}
+
+LV_data &lt;- create_subset(total_count, total_metadata, "LV")
+RV_data &lt;- create_subset(total_count, total_metadata, "RV")</code></pre>
+
+  <p>Each output is a named list with <code>$count</code> (genes × samples matrix) and <code>$metadata</code> (sample information).</p>
+
+  <h3>Bundle Data by Patient Group</h3>
+
+  <p>This is the most important preprocessing step. <code>get_etiology_data()</code> packages the staining measurements and count matrices together for a single patient group. It also applies a minimum expression filter — a gene must have at least <strong>10 raw counts in every sample</strong> in that group to be retained. This cuts out genes that are too lowly expressed to be meaningful and keeps the model focused on reliably detected signal.</p>
+
+<pre><code>get_etiology_data &lt;- function(etiology_name,
+                              full_staining,
+                              full_lv_list,
+                              full_rv_list) {
+
+  # Strip region/group suffixes from sample IDs so they match across datasets.
+  # For example: "A0049_LV_Group1" becomes "A0049".
+  # Adjust the regex if your sample ID format is different.
+  clean_ids &lt;- function(names_vec) str_extract(names_vec, "^[A-Z][0-9]+")
+
+  # Filter staining data for this group
+  sub_staining &lt;- full_staining %&gt;% filter(Etiology == etiology_name)
+
+  # LV data: filter, clean IDs, apply expression filter
+  lv_meta_sub  &lt;- full_lv_list$metadata %&gt;% filter(Etiology == etiology_name)
+  lv_count_sub &lt;- full_lv_list$count %&gt;% select(all_of(rownames(lv_meta_sub)))
+  colnames(lv_count_sub) &lt;- clean_ids(colnames(lv_count_sub))
+  rownames(lv_meta_sub)  &lt;- clean_ids(rownames(lv_meta_sub))
+  lv_count_sub &lt;- lv_count_sub[apply(lv_count_sub, 1, min) &gt;= 10, ]
+
+  # RV data: same process
+  rv_meta_sub  &lt;- full_rv_list$metadata %&gt;% filter(Etiology == etiology_name)
+  rv_count_sub &lt;- full_rv_list$count %&gt;% select(all_of(rownames(rv_meta_sub)))
+  colnames(rv_count_sub) &lt;- clean_ids(colnames(rv_count_sub))
+  rownames(rv_meta_sub)  &lt;- clean_ids(rownames(rv_meta_sub))
+  rv_count_sub &lt;- rv_count_sub[apply(rv_count_sub, 1, min) &gt;= 10, ]
+
+  list(
+    staining    = sub_staining,
+    LV_metadata = lv_meta_sub,
+    LV_count    = lv_count_sub,
+    RV_metadata = rv_meta_sub,
+    RV_count    = rv_count_sub
+  )
+}
+
+# Build one list per group — replace the labels with your own Etiology values
+group1_list &lt;- get_etiology_data("Group 1", staining_data, LV_data, RV_data)
+group2_list &lt;- get_etiology_data("Group 2", staining_data, LV_data, RV_data)
+group3_list &lt;- get_etiology_data("Group 3", staining_data, LV_data, RV_data)</code></pre>
+
+  <p><strong>After this script, you should have:</strong></p>
+
+  <table>
+    <thead><tr><th>Variable</th><th>What it contains</th></tr></thead>
+    <tbody>
+      <tr><td><code>staining_data</code></td><td>Full phenotypic data (all groups combined)</td></tr>
+      <tr><td><code>LV_data</code>, <code>RV_data</code></td><td>Count matrix + metadata, split by region</td></tr>
+      <tr><td><code>group1_list</code>, <code>group2_list</code>, <code>group3_list</code></td><td>Staining + count + metadata, split by group</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Note:</strong> If you want to restrict the gene set going into Elastic Net — for example, to genes that are differentially expressed between two of your groups — you can pre-filter the count matrices before calling <code>get_etiology_data()</code>. Replacing <code>total_count</code> with a filtered version (keeping only your genes of interest) is all that's needed; the rest of the pipeline stays the same.
+  </div>
+
+  <hr />
+
+  <!-- ── Script 2 ── -->
+  <h2 id="script2">Script 2 — Elastic Net</h2>
+  <p class="script-meta"><strong>File:</strong> Elastic Net.R &nbsp;|&nbsp; <strong>Libraries:</strong> glmnet, tidyverse, biomaRt</p>
+
+  <p>With the data organized, we can now run the model. Elastic Net is a penalized regression method that shrinks most gene coefficients to zero, keeping only the ones with genuine predictive value. It's well-suited here because we typically have thousands of candidate genes but only tens of samples — a situation where ordinary regression completely fails.</p>
+
+  <p>We use <strong>Leave-One-Out Cross-Validation (LOOCV)</strong> to find the optimal regularization strength. In small clinical cohorts, LOOCV makes the most efficient use of the available data and avoids overly optimistic model selection.</p>
+
+  <h3>Step 1 — Prepare the Predictor Matrix</h3>
+
+<pre><code>library(glmnet)
+library(tidyverse)
+library(biomaRt)
+
+prepare_elastic_net &lt;- function(data_list, region = "LV", target_col,
+                                adjustment_cols = NULL) {
+
+  count_df &lt;- if (region == "LV") data_list$LV_count else data_list$RV_count
+  meta_df  &lt;- if (region == "LV") data_list$LV_metadata else data_list$RV_metadata
+
+  # Log2-transform counts and transpose to samples x genes
+  X_genes &lt;- t(log2(count_df + 1))
+
+  # Keep only samples present in both the RNA-seq and phenotypic data
+  common_samples &lt;- intersect(rownames(X_genes), data_list$staining$`Patient ID`)
+  X_genes        &lt;- X_genes[common_samples, ]
+
+  # Extract the outcome variable
+  y &lt;- data_list$staining %&gt;%
+    filter(`Patient ID` %in% common_samples) %&gt;%
+    pull(!!sym(target_col))
+
+  # Drop samples with missing outcome values
+  non_na_idx     &lt;- !is.na(y)
+  y              &lt;- y[non_na_idx]
+  X_genes        &lt;- X_genes[non_na_idx, ]
+  common_samples &lt;- common_samples[non_na_idx]
+
+  # Optionally include covariates (e.g., Age). These will be scaled but NOT penalized.
+  if (!is.null(adjustment_cols) &amp;&amp; length(adjustment_cols) &gt; 0) {
+    adj_mat    &lt;- meta_df[common_samples, adjustment_cols, drop = FALSE]
+    adj_scaled &lt;- scale(adj_mat)
+    X_final    &lt;- cbind(adj_scaled, X_genes)
+  } else {
+    X_final &lt;- X_genes
+  }
+
+  list(X = X_final, y = y)
+}</code></pre>
+
+  <h3>Step 2 — Fit the Model and Extract Selected Genes</h3>
+
+<pre><code>run_elastic_net_full &lt;- function(X, y, alpha = 0.1, n_adj = 0) {
+
+  # Adjustment covariates (first n_adj columns) get penalty = 0,
+  # so they're always kept regardless of regularization strength.
+  # All gene columns get penalty = 1.
+  p.fac &lt;- c(rep(0, n_adj), rep(1, ncol(X) - n_adj))
+
+  set.seed(42)
+  custom_lambdas &lt;- 10^seq(2, -5, length.out = 100)
+
+  cv_fit &lt;- cv.glmnet(X, y,
+                      alpha          = alpha,
+                      penalty.factor = p.fac,
+                      lambda         = custom_lambdas,
+                      standardize    = TRUE,
+                      nfolds         = nrow(X),   # LOOCV
+                      grouped        = FALSE)
+
+  # Capture the cross-validation curve as a reusable plot object
+  pdf(NULL)
+  dev.control(displaylist = "enable")
+  plot(cv_fit)
+  title(paste("Cross-Validation (alpha =", alpha, ")"), line = 2.5)
+  cv_plot &lt;- recordPlot()
+  dev.off()
+
+  # Extract non-zero coefficients at the optimal lambda
+  full_coefs &lt;- coef(cv_fit, s = "lambda.min")
+  adj_names  &lt;- colnames(X)[seq_len(n_adj)]
+
+  coef_df &lt;- data.frame(
+    Gene        = rownames(full_coefs),
+    Coefficient = as.vector(full_coefs)
+  ) %&gt;%
+    filter(Coefficient != 0)
+
+  # Separate biological genes from the intercept and covariates
+  genes_to_map &lt;- coef_df %&gt;%
+    filter(!Gene %in% c("(Intercept)", adj_names))
+
+  # Resolve Ensembl IDs to human-readable gene symbols via Ensembl
+  if (nrow(genes_to_map) &gt; 0) {
+    mart     &lt;- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+    gene_map &lt;- getBM(
+      attributes = c("ensembl_gene_id", "external_gene_name"),
+      filters    = "ensembl_gene_id",
+      values     = genes_to_map$Gene,
+      mart       = mart
+    )
+    coef_df &lt;- coef_df %&gt;%
+      left_join(gene_map, by = c("Gene" = "ensembl_gene_id")) %&gt;%
+      mutate(Gene_Symbol = ifelse(!is.na(external_gene_name),
+                                  external_gene_name, Gene))
+  } else {
+    coef_df$Gene_Symbol &lt;- coef_df$Gene
+  }
+
+  coef_df &lt;- coef_df %&gt;%
+    dplyr::select(Gene, Gene_Symbol, Coefficient) %&gt;%
+    arrange(desc(abs(Coefficient)))
+
+  list(model = cv_fit, plot = cv_plot, coeffs = coef_df)
+}</code></pre>
+
+  <h3>Run It</h3>
+
+<pre><code># Prepare predictors for Group 1, LV, adjusting for Age
+prep &lt;- prepare_elastic_net(
+  data_list       = group1_list,
+  region          = "LV",
+  target_col      = "your_outcome_column",
+  adjustment_cols = "Age"          # set to NULL if you have no covariates
+)
+
+# Fit the model
+results &lt;- run_elastic_net_full(
+  X     = prep$X,
+  y     = prep$y,
+  alpha = 0.05,
+  n_adj = 1         # must match the number of adjustment_cols used above
+)
+
+print(results$coeffs)   # table of selected genes and their coefficients
+print(results$plot)     # cross-validation curve — inspect this to check model fit</code></pre>
+
+  <p><strong>Understanding the key parameters:</strong></p>
+
+  <table>
+    <thead><tr><th>Parameter</th><th>What it controls</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>alpha</code></td>
+        <td>Mix between Ridge (0) and LASSO (1). Values near 0 (e.g., 0.05–0.1) group correlated genes together rather than arbitrarily dropping one. Start there and adjust based on your data.</td>
+      </tr>
+      <tr>
+        <td><code>n_adj</code></td>
+        <td>Number of adjustment covariates at the start of <code>X</code>. Must match <code>length(adjustment_cols)</code> from <code>prepare_elastic_net</code>. Use <code>0</code> if no covariates.</td>
+      </tr>
+      <tr>
+        <td><code>lambda.min</code></td>
+        <td>The regularization strength that minimized CV error — used automatically to extract the final set of non-zero coefficients.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><code>results$coeffs</code> is a data frame of selected genes with Ensembl IDs, gene symbols, and regression coefficients sorted by effect size. This is what feeds directly into Script 3.</p>
+
+  <hr />
+
+  <!-- ── Script 3 ── -->
+  <h2 id="script3">Script 3 — Correlation Analysis</h2>
+  <p class="script-meta"><strong>File:</strong> Correlation Analysis.R &nbsp;|&nbsp; <strong>Libraries:</strong> tidyverse, biomaRt</p>
+
+  <p>Elastic Net gives us a shortlist of candidate genes, but we want to know how each one actually correlates with the outcome — and whether that relationship holds across all of your patient groups or is specific to one. This script runs Pearson correlations for every selected gene within each group separately, then applies Benjamini–Hochberg FDR correction.</p>
+
+<pre><code>library(tidyverse)
+library(biomaRt)
+
+run_comparative_correlation &lt;- function(data_list, target_genes,
+                                        target_var, region = "LV") {
+
+  count_df &lt;- if (region == "LV") data_list$LV_count else data_list$RV_count
+
+  # Only test genes that actually exist in this group's count matrix
+  available_genes &lt;- intersect(target_genes, rownames(count_df))
+  common_samples  &lt;- intersect(colnames(count_df), data_list$staining$`Patient ID`)
+
+  count_subset    &lt;- count_df[available_genes, common_samples, drop = FALSE]
+  staining_subset &lt;- data_list$staining %&gt;% filter(`Patient ID` %in% common_samples)
+
+  # Log-transform expression and z-score both variables before correlating
+  expr_matrix_log &lt;- as.matrix(log2(count_subset + 1))
+  target_vec      &lt;- staining_subset %&gt;% pull(!!sym(target_var))
+  target_scaled   &lt;- as.vector(scale(target_vec))
+
+  results &lt;- map_dfr(available_genes, function(gene) {
+    gene_expr_scaled &lt;- as.vector(scale(expr_matrix_log[gene, ]))
+    cor_test         &lt;- cor.test(gene_expr_scaled, target_scaled, method = "pearson")
+    data.frame(
+      Gene                = gene,
+      Mean_Expression_Raw = mean(as.numeric(count_subset[gene, ])),
+      Pearson_R           = as.numeric(cor_test$estimate),
+      P_Value             = cor_test$p.value
+    )
+  })
+
+  # Attach gene symbols
+  mart         &lt;- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+  gene_symbols &lt;- getBM(
+    attributes = c("ensembl_gene_id", "external_gene_name"),
+    filters    = "ensembl_gene_id",
+    values     = available_genes,
+    mart       = mart
+  )
+
+  results %&gt;%
+    left_join(gene_symbols, by = c("Gene" = "ensembl_gene_id")) %&gt;%
+    rename(Gene_Symbol = external_gene_name) %&gt;%
+    mutate(Adj_P_Value = p.adjust(P_Value, method = "fdr")) %&gt;%
+    dplyr::select(Gene, Gene_Symbol, Mean_Expression_Raw,
+                  Pearson_R, P_Value, Adj_P_Value) %&gt;%
+    arrange(P_Value)
+}
+
+# Run for each group using the genes selected by Elastic Net
+group1_corr_results &lt;- run_comparative_correlation(
+  group1_list, results$coeffs$Gene, "your_outcome_column", "LV")
+
+group2_corr_results &lt;- run_comparative_correlation(
+  group2_list, results$coeffs$Gene, "your_outcome_column", "LV")
+
+group3_corr_results &lt;- run_comparative_correlation(
+  group3_list, results$coeffs$Gene, "your_outcome_column", "LV")</code></pre>
+
+  <p>Each output data frame has columns: <code>Gene</code>, <code>Gene_Symbol</code>, <code>Mean_Expression_Raw</code>, <code>Pearson_R</code>, <code>P_Value</code>, <code>Adj_P_Value</code>, sorted by raw p-value.</p>
+
+  <hr />
+
+  <!-- ── Script 4 ── -->
+  <h2 id="script4">Script 4 — Correlation Heatmap</h2>
+  <p class="script-meta"><strong>File:</strong> Corr heatmap.R &nbsp;|&nbsp; <strong>Libraries:</strong> ComplexHeatmap, circlize, tidyverse</p>
+
+  <p>With correlation results from all three groups in hand, we can now visualize them together. The heatmap gives you an immediate read on which genes correlate strongly (and in which direction) across groups, and where those correlations are statistically significant.</p>
+
+  <ul style="margin: 0 0 16px 20px; line-height: 1.9;">
+    <li><strong>Color</strong> encodes Pearson r: blue = negative correlation, white = no correlation, red = positive</li>
+    <li><strong>Black squares</strong> inside each cell encode FDR significance: larger square = smaller p-value</li>
+  </ul>
+
+<pre><code>library(ComplexHeatmap)
+library(circlize)
+library(tidyverse)
+
+# Combine results from all groups into one long data frame
+all_results &lt;- list(
+  "Group 1" = group1_corr_results,
+  "Group 2" = group2_corr_results,
+  "Group 3" = group3_corr_results
+) %&gt;%
+  bind_rows(.id = "Etiology") %&gt;%
+  mutate(Etiology = factor(Etiology, levels = c("Group 1", "Group 2", "Group 3")))
+
+# Choose which genes to display — pick one option below:
+
+# Option A: all genes that pass FDR in any group (good for a focused gene set)
+genes &lt;- all_results %&gt;%
+  filter(Adj_P_Value &lt; 0.05) %&gt;%
+  pull(Gene_Symbol)
+
+# Option B: top 20 genes by absolute r in Group 1 (useful when many genes pass FDR)
+genes &lt;- all_results %&gt;%
+  filter(Adj_P_Value &lt; 0.05, Etiology == "Group 1") %&gt;%
+  top_n(20, abs(Pearson_R)) %&gt;%
+  pull(Gene_Symbol)
+
+# Build wide matrices: one for r-values, one for FDR-adjusted p-values
+cor_mat &lt;- all_results %&gt;%
+  filter(Gene_Symbol %in% genes) %&gt;%
+  dplyr::select(Etiology, Gene_Symbol, Pearson_R) %&gt;%
+  pivot_wider(names_from = Gene_Symbol, values_from = Pearson_R) %&gt;%
+  column_to_rownames("Etiology") %&gt;%
+  as.matrix()
+cor_mat[is.na(cor_mat)] &lt;- 0    # missing = no correlation
+
+pval_mat &lt;- all_results %&gt;%
+  filter(Gene_Symbol %in% genes) %&gt;%
+  dplyr::select(Etiology, Gene_Symbol, Adj_P_Value) %&gt;%
+  pivot_wider(names_from = Gene_Symbol, values_from = Adj_P_Value) %&gt;%
+  column_to_rownames("Etiology") %&gt;%
+  as.matrix()
+pval_mat[is.na(pval_mat)] &lt;- 1  # missing = not significant
+
+# Fix row order; sort columns by correlation strength in Group 1.
+# Change "Group 1" to whichever group you want to anchor the column order to.
+row_order_names &lt;- c("Group 1", "Group 2", "Group 3")
+col_order_names &lt;- names(sort(cor_mat["Group 1", ], decreasing = TRUE))
+
+col_fun &lt;- colorRamp2(c(-1, 0, 1), c("#2166ac", "white", "#b2182b"))
+
+ht &lt;- Heatmap(
+  cor_mat,
+  name   = "Correlation (r)",
+  col    = col_fun,
+  width  = ncol(cor_mat) * unit(10, "mm"),
+  height = nrow(cor_mat) * unit(10, "mm"),
+
+  cluster_rows    = FALSE,
+  row_order       = row_order_names,
+  cluster_columns = FALSE,
+  column_order    = col_order_names,
+
+  column_names_side = "bottom",
+  column_names_rot  = 45,
+  column_names_gp   = gpar(fontface = "bold", fontsize = 14),
+  row_names_gp      = gpar(fontface = "bold", fontsize = 14),
+
+  # Draw a black square inside each cell — size encodes significance
+  cell_fun = function(j, i, x, y, width, height, fill) {
+    curr_row &lt;- row_order_names[i]
+    curr_col &lt;- col_order_names[j]
+    p_val    &lt;- pval_mat[curr_row, curr_col]
+
+    s &lt;- ifelse(p_val &lt; 0.001, 0.70,
+         ifelse(p_val &lt; 0.01,  0.45,
+         ifelse(p_val &lt; 0.05,  0.25, 0)))
+
+    if (s &gt; 0)
+      grid.rect(x, y,
+                width  = width  * s,
+                height = height * s,
+                gp     = gpar(fill = "black", col = NA))
+  }
+)
+
+# Significance legend explaining the square sizes
+sig_lgd &lt;- Legend(
+  title     = "FDR",
+  labels    = c("p &lt; 0.001", "p &lt; 0.01", "p &lt; 0.05"),
+  type      = "points",
+  pch       = 15,
+  size      = unit(c(0.7, 0.45, 0.25) * 8, "mm"),
+  legend_gp = gpar(col = "black")
+)
+
+draw(ht, annotation_legend_list = list(sig_lgd))</code></pre>
+
+  <div class="note">
+    <strong>Column ordering tip:</strong> Columns are sorted by correlation strength in Group 1 (<code>cor_mat["Group 1", ]</code>). If you want to anchor the ordering to a different group, change that line accordingly.
+  </div>
+
+  <hr />
+
+  <!-- ── Script 5 ── -->
+  <h2 id="script5">Script 5 — Scatter Plots</h2>
+  <p class="script-meta"><strong>File:</strong> Corr scatter plot.R &nbsp;|&nbsp; <strong>Libraries:</strong> ggplot2, tidyverse, biomaRt</p>
+
+  <p>The heatmap gives an overview; scatter plots let you inspect individual genes. For any gene of interest, this script produces a single panel with all groups overlaid — each group gets its own color, regression line, and annotated r and p-values.</p>
+
+  <p>One thing worth noting: the expression filter from Script 1 (requiring ≥ 10 counts in every sample) may have excluded some genes from the model that you still want to visualize. The data-loading function here deliberately skips that filter, so any gene in your count matrix can be plotted.</p>
+
+  <h3>Build an Unfiltered Data List</h3>
+
+<pre><code>library(ggplot2)
+library(tidyverse)
+library(biomaRt)
+
+get_etiology_data_for_scatter &lt;- function(etiology_name,
+                                          full_staining,
+                                          full_lv_list,
+                                          full_rv_list) {
+
+  clean_ids &lt;- function(names_vec) str_extract(names_vec, "^[A-Z][0-9]+")
+
+  sub_staining &lt;- full_staining %&gt;% filter(Etiology == etiology_name)
+
+  lv_meta_sub  &lt;- full_lv_list$metadata %&gt;% filter(Etiology == etiology_name)
+  lv_count_sub &lt;- full_lv_list$count %&gt;% dplyr::select(all_of(rownames(lv_meta_sub)))
+  colnames(lv_count_sub) &lt;- clean_ids(colnames(lv_count_sub))
+  rownames(lv_meta_sub)  &lt;- clean_ids(rownames(lv_meta_sub))
+  # No expression filter here — keep all genes for plotting
+
+  rv_meta_sub  &lt;- full_rv_list$metadata %&gt;% filter(Etiology == etiology_name)
+  rv_count_sub &lt;- full_rv_list$count %&gt;% dplyr::select(all_of(rownames(rv_meta_sub)))
+  colnames(rv_count_sub) &lt;- clean_ids(colnames(rv_count_sub))
+  rownames(rv_meta_sub)  &lt;- clean_ids(rownames(rv_meta_sub))
+
+  list(
+    staining    = sub_staining,
+    LV_metadata = lv_meta_sub,
+    LV_count    = lv_count_sub,
+    RV_metadata = rv_meta_sub,
+    RV_count    = rv_count_sub
+  )
+}
+
+# Build the list for all groups (no expression filter)
+data_full_list &lt;- lapply(
+  setNames(c("Group 1", "Group 2", "Group 3"),
+           c("Group 1", "Group 2", "Group 3")),
+  function(etio) {
+    get_etiology_data_for_scatter(etio, staining_data, LV_data, RV_data)
+  }
+)</code></pre>
+
+  <h3>Plot Function</h3>
+
+<pre><code>plot_gene_correlation_combined &lt;- function(data_full_list, target_gene_id,
+                                           target_var, region = "LV") {
+
+  # Resolve Ensembl ID to gene symbol for axis labeling
+  mart      &lt;- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+  gene_info &lt;- getBM(
+    attributes = c("ensembl_gene_id", "external_gene_name"),
+    filters    = "ensembl_gene_id",
+    values     = target_gene_id,
+    mart       = mart
+  )
+  gene_symbol &lt;- if (nrow(gene_info) &gt; 0) gene_info$external_gene_name[1] else target_gene_id
+
+  # Extract log2-transformed expression and staining values for each group
+  get_group_df &lt;- function(group_list, group_name) {
+    count_df &lt;- if (region == "LV") group_list$LV_count else group_list$RV_count
+    if (!(target_gene_id %in% rownames(count_df))) return(NULL)
+    expr &lt;- log2(as.numeric(count_df[target_gene_id, ]) + 1)
+    data.frame(Patient_ID = colnames(count_df), Expression = expr) %&gt;%
+      inner_join(group_list$staining, by = c("Patient_ID" = "Patient ID")) %&gt;%
+      dplyr::select(Expression, !!sym(target_var)) %&gt;%
+      mutate(Group = group_name)
+  }
+
+  combined_df &lt;- bind_rows(
+    get_group_df(data_full_list[["Group 1"]], "Group 1"),
+    get_group_df(data_full_list[["Group 2"]], "Group 2"),
+    get_group_df(data_full_list[["Group 3"]], "Group 3")
+  ) %&gt;%
+    mutate(Group = factor(Group, levels = c("Group 1", "Group 2", "Group 3"))) %&gt;%
+    drop_na(Expression, !!sym(target_var))
+
+  # Per-group Pearson r and p-value, with FDR correction across groups
+  stats_df &lt;- combined_df %&gt;%
+    group_by(Group) %&gt;%
+    summarize(
+      r = cor(Expression, !!sym(target_var), method = "pearson", use = "complete.obs"),
+      p = if (n() &gt; 2) cor.test(Expression, !!sym(target_var))$p.value else 1
+    ) %&gt;%
+    ungroup() %&gt;%
+    mutate(
+      padj  = p.adjust(p, method = "fdr"),
+      label = paste0(Group, ": p=", signif(p, 3), ", r=", round(r, 2)),
+      y_pos = seq(
+        max(combined_df[[target_var]], na.rm = TRUE),
+        by     = -diff(range(combined_df[[target_var]], na.rm = TRUE)) * 0.06,
+        length.out = n()
+      )
+    )
+
+  ggplot(combined_df, aes(x = Expression, y = !!sym(target_var), color = Group)) +
+    geom_point(alpha = 0.5, size = 3) +
+    geom_smooth(method = "lm", se = FALSE, linewidth = 1.2, na.rm = TRUE) +
+    geom_text(
+      data  = stats_df,
+      aes(x = -Inf, y = y_pos, label = label, color = Group),
+      hjust = -0.1, vjust = 1, size = 3.8, fontface = "bold", show.legend = FALSE
+    ) +
+    scale_color_manual(values = c(
+      "Group 1" = "#de425b",   # red   — change to your preference
+      "Group 2" = "#329db3",   # teal
+      "Group 3" = "#488f31"    # green
+    )) +
+    theme_bw() +
+    labs(
+      x = paste(gene_symbol, "Normalized Expression (", region, ")"),
+      y = target_var
+    ) +
+    theme(
+      legend.position = "none",
+      axis.title      = element_text(size = 11, face = "bold"),
+      axis.text       = element_text(size = 11, face = "bold"),
+      plot.title      = element_text(face = "bold")
+    )
+}
+
+# Generate a plot — replace the Ensembl ID and outcome column with your own
+plot_gene_correlation_combined(
+  data_full_list,
+  target_gene_id = "ENSG00000000000",    # replace with your gene of interest
+  target_var     = "your_outcome_column",
+  region         = "LV"
+)</code></pre>
+
+  <div class="note">
+    <strong>Colors:</strong> Group 1 is red (<code>#de425b</code>), Group 2 is teal (<code>#329db3</code>), Group 3 is green (<code>#488f31</code>). Edit <code>scale_color_manual()</code> to use your preferred palette.
+  </div>
+
+  <hr />
+
+  <!-- ── Data Flow ── -->
+  <h2 id="data-flow">Data Flow Summary</h2>
+
+  <div class="flow-block">Preprocessing.R
+│
+│   staining_data, LV_data, RV_data
+│   group1_list, group2_list, group3_list
+│
+├──► Elastic Net.R
+│        │
+│        │   results$coeffs  (selected genes + coefficients)
+│        │
+│        └──► Correlation Analysis.R
+│                  │
+│                  │   group1_corr_results
+│                  │   group2_corr_results
+│                  │   group3_corr_results
+│                  │
+│                  ├──► Corr heatmap.R
+│                  │        └── Heatmap: all groups × selected genes
+│                  │
+│                  └──► Corr scatter plot.R
+│                           └── Per-gene scatter: expression vs. outcome
+│
+└──► Corr scatter plot.R  (also reads staining_data, LV_data, RV_data directly)</div>
+
+  <h3>Key Variables Carried Between Scripts</h3>
+
+  <table>
+    <thead>
+      <tr><th>Variable</th><th>Produced in</th><th>Used in</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>staining_data</code></td>
+        <td>Preprocessing</td>
+        <td>Elastic Net, Scatter Plot</td>
+      </tr>
+      <tr>
+        <td><code>LV_data</code>, <code>RV_data</code></td>
+        <td>Preprocessing</td>
+        <td>Elastic Net, Scatter Plot</td>
+      </tr>
+      <tr>
+        <td><code>group1_list</code>, <code>group2_list</code>, <code>group3_list</code></td>
+        <td>Preprocessing</td>
+        <td>Elastic Net, Correlation Analysis</td>
+      </tr>
+      <tr>
+        <td><code>results$coeffs</code></td>
+        <td>Elastic Net</td>
+        <td>Correlation Analysis</td>
+      </tr>
+      <tr>
+        <td><code>group1_corr_results</code>, <code>group2_corr_results</code>, <code>group3_corr_results</code></td>
+        <td>Correlation Analysis</td>
+        <td>Heatmap</td>
+      </tr>
+    </tbody>
+  </table>
+
+</div>
+</body>
+</html>

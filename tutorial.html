@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gene–Phenotype Analysis Pipeline</title>
+  <title>bulk RNA-seq Elastic Net Analysis</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -55,14 +55,14 @@
       color: #222;
     }
 
-    .script-meta {
+    .step-meta {
       font-size: 0.88rem;
       color: #666;
       margin-bottom: 18px;
-      margin-top: -2px;
+      margin-top: 2px;
     }
 
-    .script-meta strong { color: #444; }
+    .step-meta strong { color: #444; }
 
     p { margin-bottom: 16px; }
 
@@ -154,20 +154,6 @@
 
     tr:last-child td { border-bottom: none; }
 
-    /* ── Data flow pre ── */
-    .flow-block {
-      background: #f6f7f8;
-      border: 1px solid #e2e4e7;
-      border-radius: 6px;
-      padding: 20px 22px;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-      font-size: 0.83rem;
-      line-height: 1.8;
-      overflow-x: auto;
-      margin: 18px 0 24px;
-      white-space: pre;
-    }
-
     /* ── Section dividers ── */
     hr {
       border: none;
@@ -210,8 +196,8 @@
 <body>
 <div class="page">
 
-  <h1>Gene–Phenotype Analysis Pipeline</h1>
-  <p class="subtitle">Linking Bulk RNA-seq Expression to Quantitative Tissue Measurements</p>
+  <h1>bulk RNA-seq Elastic Net Analysis</h1>
+  <p class="subtitle">Linking Gene Expression to Quantitative Tissue Measurements</p>
 
   <!-- ── Table of Contents ── -->
   <div class="toc">
@@ -219,12 +205,11 @@
     <ol>
       <li><a href="#introduction">Introduction</a></li>
       <li><a href="#before-you-start">Before You Start</a></li>
-      <li><a href="#script1">Script 1 — Preprocessing</a></li>
-      <li><a href="#script2">Script 2 — Elastic Net</a></li>
-      <li><a href="#script3">Script 3 — Correlation Analysis</a></li>
-      <li><a href="#script4">Script 4 — Correlation Heatmap</a></li>
-      <li><a href="#script5">Script 5 — Scatter Plots</a></li>
-      <li><a href="#data-flow">Data Flow Summary</a></li>
+      <li><a href="#step1">Step 1 — Preprocessing</a></li>
+      <li><a href="#step2">Step 2 — Elastic Net</a></li>
+      <li><a href="#step3">Step 3 — Correlation Analysis</a></li>
+      <li><a href="#step4">Step 4 — Correlation Heatmap</a></li>
+      <li><a href="#step5">Step 5 — Scatter Plots</a></li>
     </ol>
   </div>
 
@@ -240,7 +225,7 @@
     <figcaption>Figure 1. Overview of the analysis pipeline.</figcaption>
   </figure>
 
-  <p>The pipeline runs as five R scripts in sequence. Everything produced in one script feeds directly into the next.</p>
+  <p>The pipeline runs in five steps in sequence. Everything produced in one step feeds directly into the next.</p>
 
   <hr />
 
@@ -289,11 +274,11 @@ BiocManager::install(c("biomaRt", "ComplexHeatmap"))</code></pre>
 
   <hr />
 
-  <!-- ── Script 1 ── -->
-  <h2 id="script1">Script 1 — Preprocessing</h2>
-  <p class="script-meta"><strong>File:</strong> Preprocessing.R &nbsp;|&nbsp; <strong>Libraries:</strong> readxl, tidyverse, dplyr</p>
+  <!-- ── Step 1 ── -->
+  <h2 id="step1">Step 1 — Preprocessing</h2>
+  <p class="step-meta"><strong>Libraries:</strong> readxl, tidyverse, dplyr</p>
 
-  <p>This script does all the groundwork. It loads your raw data, applies quality control, and organizes everything into structured per-group lists that every downstream script depends on. Running this first — and making sure it completes without errors — saves a lot of headaches later.</p>
+  <p>This step does all the groundwork. It loads your raw data, applies quality control, and organizes everything into structured per-group lists that every downstream step depends on. Running this first — and making sure it completes without errors — saves a lot of headaches later.</p>
 
   <h3>Load and Clean the Data</h3>
 
@@ -388,7 +373,7 @@ group1_list &lt;- get_etiology_data("Group 1", staining_data, LV_data, RV_data)
 group2_list &lt;- get_etiology_data("Group 2", staining_data, LV_data, RV_data)
 group3_list &lt;- get_etiology_data("Group 3", staining_data, LV_data, RV_data)</code></pre>
 
-  <p><strong>After this script, you should have:</strong></p>
+  <p><strong>After this step, you should have:</strong></p>
 
   <table>
     <thead><tr><th>Variable</th><th>What it contains</th></tr></thead>
@@ -405,15 +390,15 @@ group3_list &lt;- get_etiology_data("Group 3", staining_data, LV_data, RV_data)<
 
   <hr />
 
-  <!-- ── Script 2 ── -->
-  <h2 id="script2">Script 2 — Elastic Net</h2>
-  <p class="script-meta"><strong>File:</strong> Elastic Net.R &nbsp;|&nbsp; <strong>Libraries:</strong> glmnet, tidyverse, biomaRt</p>
+  <!-- ── Step 2 ── -->
+  <h2 id="step2">Step 2 — Elastic Net</h2>
+  <p class="step-meta"><strong>Libraries:</strong> glmnet, tidyverse, biomaRt</p>
 
   <p>With the data organized, we can now run the model. Elastic Net is a penalized regression method that shrinks most gene coefficients to zero, keeping only the ones with genuine predictive value. It's well-suited here because we typically have thousands of candidate genes but only tens of samples — a situation where ordinary regression completely fails.</p>
 
   <p>We use <strong>Leave-One-Out Cross-Validation (LOOCV)</strong> to find the optimal regularization strength. In small clinical cohorts, LOOCV makes the most efficient use of the available data and avoids overly optimistic model selection.</p>
 
-  <h3>Step 1 — Prepare the Predictor Matrix</h3>
+  <h3>Step 2a — Prepare the Predictor Matrix</h3>
 
 <pre><code>library(glmnet)
 library(tidyverse)
@@ -455,7 +440,7 @@ prepare_elastic_net &lt;- function(data_list, region = "LV", target_col,
   list(X = X_final, y = y)
 }</code></pre>
 
-  <h3>Step 2 — Fit the Model and Extract Selected Genes</h3>
+  <h3>Step 2b — Fit the Model and Extract Selected Genes</h3>
 
 <pre><code>run_elastic_net_full &lt;- function(X, y, alpha = 0.1, n_adj = 0) {
 
@@ -562,15 +547,15 @@ print(results$plot)     # cross-validation curve — inspect this to check model
     </tbody>
   </table>
 
-  <p><code>results$coeffs</code> is a data frame of selected genes with Ensembl IDs, gene symbols, and regression coefficients sorted by effect size. This is what feeds directly into Script 3.</p>
+  <p><code>results$coeffs</code> is a data frame of selected genes with Ensembl IDs, gene symbols, and regression coefficients sorted by effect size. This is what feeds into the next step.</p>
 
   <hr />
 
-  <!-- ── Script 3 ── -->
-  <h2 id="script3">Script 3 — Correlation Analysis</h2>
-  <p class="script-meta"><strong>File:</strong> Correlation Analysis.R &nbsp;|&nbsp; <strong>Libraries:</strong> tidyverse, biomaRt</p>
+  <!-- ── Step 3 ── -->
+  <h2 id="step3">Step 3 — Correlation Analysis</h2>
+  <p class="step-meta"><strong>Libraries:</strong> tidyverse, biomaRt</p>
 
-  <p>Elastic Net gives us a shortlist of candidate genes, but we want to know how each one actually correlates with the outcome — and whether that relationship holds across all of your patient groups or is specific to one. This script runs Pearson correlations for every selected gene within each group separately, then applies Benjamini–Hochberg FDR correction.</p>
+  <p>Elastic Net gives us a shortlist of candidate genes, but we want to know how each one actually correlates with the outcome — and whether that relationship holds across all of your patient groups or is specific to one. This step runs Pearson correlations for every selected gene within each group separately, then applies Benjamini–Hochberg FDR correction.</p>
 
 <pre><code>library(tidyverse)
 library(biomaRt)
@@ -635,9 +620,9 @@ group3_corr_results &lt;- run_comparative_correlation(
 
   <hr />
 
-  <!-- ── Script 4 ── -->
-  <h2 id="script4">Script 4 — Correlation Heatmap</h2>
-  <p class="script-meta"><strong>File:</strong> Corr heatmap.R &nbsp;|&nbsp; <strong>Libraries:</strong> ComplexHeatmap, circlize, tidyverse</p>
+  <!-- ── Step 4 ── -->
+  <h2 id="step4">Step 4 — Correlation Heatmap</h2>
+  <p class="step-meta"><strong>Libraries:</strong> ComplexHeatmap, circlize, tidyverse</p>
 
   <p>With correlation results from all three groups in hand, we can now visualize them together. The heatmap gives you an immediate read on which genes correlate strongly (and in which direction) across groups, and where those correlations are statistically significant.</p>
 
@@ -749,13 +734,13 @@ draw(ht, annotation_legend_list = list(sig_lgd))</code></pre>
 
   <hr />
 
-  <!-- ── Script 5 ── -->
-  <h2 id="script5">Script 5 — Scatter Plots</h2>
-  <p class="script-meta"><strong>File:</strong> Corr scatter plot.R &nbsp;|&nbsp; <strong>Libraries:</strong> ggplot2, tidyverse, biomaRt</p>
+  <!-- ── Step 5 ── -->
+  <h2 id="step5">Step 5 — Scatter Plots</h2>
+  <p class="step-meta"><strong>Libraries:</strong> ggplot2, tidyverse, biomaRt</p>
 
-  <p>The heatmap gives an overview; scatter plots let you inspect individual genes. For any gene of interest, this script produces a single panel with all groups overlaid — each group gets its own color, regression line, and annotated r and p-values.</p>
+  <p>The heatmap gives an overview; scatter plots let you inspect individual genes. For any gene of interest, this step produces a single panel with all groups overlaid — each group gets its own color, regression line, and annotated r and p-values.</p>
 
-  <p>One thing worth noting: the expression filter from Script 1 (requiring ≥ 10 counts in every sample) may have excluded some genes from the model that you still want to visualize. The data-loading function here deliberately skips that filter, so any gene in your count matrix can be plotted.</p>
+  <p>One thing worth noting: the expression filter from Step 1 (requiring ≥ 10 counts in every sample) may have excluded some genes from the model that you still want to visualize. The data-loading function here deliberately skips that filter, so any gene in your count matrix can be plotted.</p>
 
   <h3>Build an Unfiltered Data List</h3>
 
@@ -890,69 +875,6 @@ plot_gene_correlation_combined(
   <div class="note">
     <strong>Colors:</strong> Group 1 is red (<code>#de425b</code>), Group 2 is teal (<code>#329db3</code>), Group 3 is green (<code>#488f31</code>). Edit <code>scale_color_manual()</code> to use your preferred palette.
   </div>
-
-  <hr />
-
-  <!-- ── Data Flow ── -->
-  <h2 id="data-flow">Data Flow Summary</h2>
-
-  <div class="flow-block">Preprocessing.R
-│
-│   staining_data, LV_data, RV_data
-│   group1_list, group2_list, group3_list
-│
-├──► Elastic Net.R
-│        │
-│        │   results$coeffs  (selected genes + coefficients)
-│        │
-│        └──► Correlation Analysis.R
-│                  │
-│                  │   group1_corr_results
-│                  │   group2_corr_results
-│                  │   group3_corr_results
-│                  │
-│                  ├──► Corr heatmap.R
-│                  │        └── Heatmap: all groups × selected genes
-│                  │
-│                  └──► Corr scatter plot.R
-│                           └── Per-gene scatter: expression vs. outcome
-│
-└──► Corr scatter plot.R  (also reads staining_data, LV_data, RV_data directly)</div>
-
-  <h3>Key Variables Carried Between Scripts</h3>
-
-  <table>
-    <thead>
-      <tr><th>Variable</th><th>Produced in</th><th>Used in</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>staining_data</code></td>
-        <td>Preprocessing</td>
-        <td>Elastic Net, Scatter Plot</td>
-      </tr>
-      <tr>
-        <td><code>LV_data</code>, <code>RV_data</code></td>
-        <td>Preprocessing</td>
-        <td>Elastic Net, Scatter Plot</td>
-      </tr>
-      <tr>
-        <td><code>group1_list</code>, <code>group2_list</code>, <code>group3_list</code></td>
-        <td>Preprocessing</td>
-        <td>Elastic Net, Correlation Analysis</td>
-      </tr>
-      <tr>
-        <td><code>results$coeffs</code></td>
-        <td>Elastic Net</td>
-        <td>Correlation Analysis</td>
-      </tr>
-      <tr>
-        <td><code>group1_corr_results</code>, <code>group2_corr_results</code>, <code>group3_corr_results</code></td>
-        <td>Correlation Analysis</td>
-        <td>Heatmap</td>
-      </tr>
-    </tbody>
-  </table>
 
 </div>
 </body>

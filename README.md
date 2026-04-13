@@ -1,5 +1,5 @@
-# Gene–Phenotype Analysis Pipeline
-### Linking Bulk RNA-seq Expression to Quantitative Tissue Measurements
+# bulk RNA-seq Elastic Net Analysis
+### Linking Gene Expression to Quantitative Tissue Measurements
 
 ---
 
@@ -11,7 +11,7 @@ The strategy has two stages. First, we use **Elastic Net penalized regression** 
 
 ![Pipeline Overview](Method_JPG.jpg)
 
-The pipeline runs as five R scripts in sequence. Everything produced in one script feeds directly into the next.
+The pipeline runs in five steps in sequence. Everything produced in one step feeds directly into the next.
 
 ---
 
@@ -44,11 +44,11 @@ Similarly, the outcome variable is written as `"your_outcome_column"` in all cod
 
 ---
 
-## Script 1 — Preprocessing
+## Step 1 — Preprocessing
 
-**File:** `Preprocessing.R` | **Libraries:** `readxl`, `tidyverse`, `dplyr`
+**Libraries:** `readxl`, `tidyverse`, `dplyr`
 
-This script does all the groundwork. It loads your raw data, applies quality control, and organizes everything into structured per-group lists that every downstream script depends on. Running this first — and making sure it completes without errors — saves a lot of headaches later.
+This step does all the groundwork. It loads your raw data, applies quality control, and organizes everything into structured per-group lists that every downstream step depends on. Running this first — and making sure it completes without errors — saves a lot of headaches later.
 
 ### Load and Clean the Data
 
@@ -149,7 +149,7 @@ group2_list <- get_etiology_data("Group 2", staining_data, LV_data, RV_data)
 group3_list <- get_etiology_data("Group 3", staining_data, LV_data, RV_data)
 ```
 
-**After this script, you should have:**
+**After this step, you should have:**
 
 | Variable | What it contains |
 |---|---|
@@ -161,15 +161,15 @@ group3_list <- get_etiology_data("Group 3", staining_data, LV_data, RV_data)
 
 ---
 
-## Script 2 — Elastic Net
+## Step 2 — Elastic Net
 
-**File:** `Elastic Net.R` | **Libraries:** `glmnet`, `tidyverse`, `biomaRt`
+**Libraries:** `glmnet`, `tidyverse`, `biomaRt`
 
 With the data organized, we can now run the model. Elastic Net is a penalized regression method that shrinks most gene coefficients to zero, keeping only the ones with genuine predictive value. It's well-suited here because we typically have thousands of candidate genes but only tens of samples — a situation where ordinary regression completely fails.
 
 We use **Leave-One-Out Cross-Validation (LOOCV)** to find the optimal regularization strength. In small clinical cohorts, LOOCV makes the most efficient use of the available data and avoids overly optimistic model selection.
 
-### Step 1 — Prepare the Predictor Matrix
+### Step 2a — Prepare the Predictor Matrix
 
 ```r
 library(glmnet)
@@ -213,7 +213,7 @@ prepare_elastic_net <- function(data_list, region = "LV", target_col,
 }
 ```
 
-### Step 2 — Fit the Model and Extract Selected Genes
+### Step 2b — Fit the Model and Extract Selected Genes
 
 ```r
 run_elastic_net_full <- function(X, y, alpha = 0.1, n_adj = 0) {
@@ -312,15 +312,15 @@ print(results$plot)     # cross-validation curve — inspect this to check model
 | `n_adj` | Number of adjustment covariates at the start of `X`. Must match `length(adjustment_cols)` from `prepare_elastic_net`. |
 | `lambda.min` | The regularization strength that minimized CV error — used automatically to extract coefficients. |
 
-`results$coeffs` is a data frame of selected genes with Ensembl IDs, gene symbols, and regression coefficients sorted by effect size. This is what feeds into Script 3.
+`results$coeffs` is a data frame of selected genes with Ensembl IDs, gene symbols, and regression coefficients sorted by effect size. This is what feeds into the next step.
 
 ---
 
-## Script 3 — Correlation Analysis
+## Step 3 — Correlation Analysis
 
-**File:** `Correlation Analysis.R` | **Libraries:** `tidyverse`, `biomaRt`
+**Libraries:** `tidyverse`, `biomaRt`
 
-Elastic Net gives us a shortlist of candidate genes, but we want to know how each one actually correlates with the outcome — and whether that relationship holds across all of your patient groups or is specific to one. This script runs Pearson correlations for every selected gene within each group separately, then applies Benjamini–Hochberg FDR correction.
+Elastic Net gives us a shortlist of candidate genes, but we want to know how each one actually correlates with the outcome — and whether that relationship holds across all of your patient groups or is specific to one. This step runs Pearson correlations for every selected gene within each group separately, then applies Benjamini–Hochberg FDR correction.
 
 ```r
 library(tidyverse)
@@ -387,9 +387,9 @@ Each output data frame has columns: `Gene`, `Gene_Symbol`, `Mean_Expression_Raw`
 
 ---
 
-## Script 4 — Correlation Heatmap
+## Step 4 — Correlation Heatmap
 
-**File:** `Corr heatmap.R` | **Libraries:** `ComplexHeatmap`, `circlize`, `tidyverse`
+**Libraries:** `ComplexHeatmap`, `circlize`, `tidyverse`
 
 Now we bring all three groups' results together in a single visualization. The heatmap gives you an immediate read on which genes correlate strongly (and in which direction) across groups, and where those correlations are statistically significant.
 
@@ -495,15 +495,17 @@ sig_lgd <- Legend(
 draw(ht, annotation_legend_list = list(sig_lgd))
 ```
 
+> **Column ordering tip:** Columns are sorted by correlation strength in Group 1 (`cor_mat["Group 1", ]`). If you want to anchor the ordering to a different group, change that line accordingly.
+
 ---
 
-## Script 5 — Scatter Plots
+## Step 5 — Scatter Plots
 
-**File:** `Corr scatter plot.R` | **Libraries:** `ggplot2`, `tidyverse`, `biomaRt`
+**Libraries:** `ggplot2`, `tidyverse`, `biomaRt`
 
-The heatmap gives an overview; scatter plots let you inspect individual genes. For any gene of interest, this script produces a single panel with all groups overlaid — each group gets its own color, regression line, and annotated r and p-values.
+The heatmap gives an overview; scatter plots let you inspect individual genes. For any gene of interest, this step produces a single panel with all groups overlaid — each group gets its own color, regression line, and annotated r and p-values.
 
-One thing worth noting: the expression filter from Script 1 (requiring ≥ 10 counts in every sample) may have excluded some genes from the model that you still want to visualize. The data-loading function here deliberately skips that filter, so any gene in your count matrix can be plotted.
+One thing worth noting: the expression filter from Step 1 (requiring ≥ 10 counts in every sample) may have excluded some genes from the model that you still want to visualize. The data-loading function here deliberately skips that filter, so any gene in your count matrix can be plotted.
 
 ### Build an Unfiltered Data List
 
@@ -640,44 +642,3 @@ plot_gene_correlation_combined(
 ```
 
 > **Colors:** Group 1 is red (`#de425b`), Group 2 is teal (`#329db3`), Group 3 is green (`#488f31`). Edit `scale_color_manual()` to use your preferred palette.
-
----
-
-## Data Flow Summary
-
-```
-Preprocessing.R
-│
-│   staining_data, LV_data, RV_data
-│   group1_list, group2_list, group3_list
-│
-├──► Elastic Net.R
-│        │
-│        │   results$coeffs  (selected genes + coefficients)
-│        │
-│        └──► Correlation Analysis.R
-│                  │
-│                  │   group1_corr_results
-│                  │   group2_corr_results
-│                  │   group3_corr_results
-│                  │
-│                  ├──► Corr heatmap.R
-│                  │        └── Heatmap: all groups × selected genes
-│                  │
-│                  └──► Corr scatter plot.R
-│                           └── Per-gene scatter: expression vs. outcome
-│
-└──► Corr scatter plot.R  (also reads staining_data, LV_data, RV_data directly)
-```
-
----
-
-## Key Variables Carried Between Scripts
-
-| Variable | Produced in | Used in |
-|---|---|---|
-| `staining_data` | Preprocessing | Elastic Net, Scatter Plot |
-| `LV_data`, `RV_data` | Preprocessing | Elastic Net, Scatter Plot |
-| `group1_list`, `group2_list`, `group3_list` | Preprocessing | Elastic Net, Correlation Analysis |
-| `results$coeffs` | Elastic Net | Correlation Analysis |
-| `group1_corr_results`, `group2_corr_results`, `group3_corr_results` | Correlation Analysis | Heatmap |

@@ -13,6 +13,8 @@ The strategy has two stages. First, we use **Elastic Net penalized regression** 
 
 The pipeline runs in five steps in sequence. Everything produced in one step feeds directly into the next.
 
+[HTML Tutorial]: https://mobinkhoramjoo.github.io/bulk-seq_elastic-net/tutorial.html
+
 ---
 
 ## Before You Start
